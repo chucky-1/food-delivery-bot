@@ -9,4 +9,5 @@ CMD ["./myapp"]
 FROM alpine:latest
 WORKDIR /app
 COPY --from=application /app /app/app
+RUN chmod +x /app/myapp
 CMD ["/app/app"]
