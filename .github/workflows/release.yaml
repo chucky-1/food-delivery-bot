@@ -44,7 +44,7 @@ jobs:
         run: wget -qO- https://download.red-gate.com/maven/release/org/flywaydb/enterprise/flyway-commandline/9.22.1/flyway-commandline-9.22.1-linux-x64.tar.gz | tar -xvz && sudo ln -s `pwd`/flyway-9.22.1/flyway /usr/local/bin
 
       - name: Make migrations
-        run: flyway -user=${{ secrets.DB_USERNAME }} -password=${{ secrets.DB_PASSWORD }} -locations=filesystem:../../migrations -url=jdbc:postgresql://${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_DATABASE }} migrate
+        run: flyway -user=${{ secrets.DB_USERNAME }} -password=${{ secrets.DB_PASSWORD }} -locations=filesystem:./migrations -url=jdbc:postgresql://${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_DATABASE }} migrate
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
