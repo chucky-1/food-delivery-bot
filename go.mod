@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgconn v1.14.0
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 )
 

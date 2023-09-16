@@ -11,7 +11,6 @@ import (
 	"github.com/chucky-1/food-delivery-bot/internal/producer"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 
 	"github.com/chucky-1/food-delivery-bot/internal/config"
@@ -23,10 +22,6 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if err := godotenv.Load(); err != nil {
-		logrus.Fatal("No .env file found")
-	}
 
 	cfg := config.NewConfig()
 
