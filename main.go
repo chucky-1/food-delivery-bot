@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -77,6 +79,20 @@ func main() {
 
 	statisticsSender := producer.NewStatisticsSender(bot, statisticsService, cfg.Timezone, cfg.ReportHour, cfg.ReportReceivers)
 	go statisticsSender.StatisticsSend(ctx)
+
+	// http server to check health
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		_, err = io.WriteString(writer, "")
+		if err != nil {
+			logrus.Fatalf("couldn't write response: %v", err)
+		}
+	})
+	go func() {
+		err = http.ListenAndServe(":8080", nil)
+		if err != nil {
+			logrus.Fatalf("couldn't listen and serve: %v", err)
+		}
+	}()
 
 	logrus.Infof("app has started")
 
