@@ -43,7 +43,7 @@ func main() {
 	userRep := repository.NewUser(transactorRep)
 	orgRep := repository.NewOrganization(transactorRep)
 	telegramUserRep := repository.NewTelegram(transactorRep)
-	orderRep := repository.NewOrder(transactorRep, cfg.Timezone)
+	orderRep := repository.NewOrder(transactorRep, cfg.Timezone, cfg.PeriodOfTimeBeforeLunchToShipOrder)
 	statisticsRepo := repository.NewStatistics(transactorRep)
 	menuRep := repository.NewMenu(cfg.Menu.Categories, dishesByCategories, allDishes)
 
