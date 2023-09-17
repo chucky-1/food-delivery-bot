@@ -2,12 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/chucky-1/food-delivery-bot/internal/model"
 	"github.com/google/uuid"
 )
+
+var ErrLunchTimePassed = errors.New("lunch time has already passed")
 
 type Order interface {
 	AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error
@@ -21,23 +24,37 @@ type Order interface {
 }
 
 type order struct {
-	tr       *transactor
-	timezone time.Duration
+	tr                                 *transactor
+	timezone                           time.Duration
+	periodOfTimeBeforeLunchToShipOrder time.Duration
 }
 
-func NewOrder(tr *transactor, timezone time.Duration) *order {
+func NewOrder(tr *transactor, timezone time.Duration, periodOfTimeBeforeLunchToShipOrder time.Duration) *order {
 	return &order{
-		tr:       tr,
-		timezone: timezone,
+		tr:                                 tr,
+		timezone:                           timezone,
+		periodOfTimeBeforeLunchToShipOrder: periodOfTimeBeforeLunchToShipOrder,
 	}
 }
 
 func (o *order) AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error {
-	query := `INSERT INTO internal.orders (date, user_telegram_id, dish_name, dish_price, category) VALUES ($1,$2,$3,$4,$5)`
+	query := `
+		INSERT INTO internal.orders (date, user_telegram_id, dish_name, dish_price, category)
+			SELECT $1, $2, $3, $4, $5
+			WHERE EXISTS (
+				SELECT 1
+				FROM internal.users AS u
+				JOIN internal.organizations AS o ON u.organization_id = o.id
+				WHERE u.telegram_id = $2
+				AND o.lunch_time > $6)`
 	date := time.Now().UTC().Add(o.timezone)
-	_, err := o.tr.extractTx(ctx).Exec(ctx, query, date, userTelegramID, dish.Name, dish.Price, dish.Category)
+	tag, err := o.tr.extractTx(ctx).Exec(ctx, query, date, userTelegramID, dish.Name, dish.Price, dish.Category,
+		o.convertTimeToDurationMinusPeriodOfTimeBeforeLunchToShipOrder(time.Now().UTC().Add(o.timezone)))
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrLunchTimePassed
 	}
 	return nil
 }
@@ -183,4 +200,10 @@ func (o *order) ClearOrdersByUser(ctx context.Context, userTelegramID int64, dat
 		return fmt.Errorf("exec: %w", err)
 	}
 	return nil
+}
+
+func (o *order) convertTimeToDurationMinusPeriodOfTimeBeforeLunchToShipOrder(t time.Time) time.Duration {
+	hour := t.Hour()
+	minute := t.Minute()
+	return time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute + o.periodOfTimeBeforeLunchToShipOrder
 }

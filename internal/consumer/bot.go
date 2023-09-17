@@ -2,12 +2,14 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chucky-1/food-delivery-bot/internal/model"
+	"github.com/chucky-1/food-delivery-bot/internal/repository"
 	"github.com/chucky-1/food-delivery-bot/internal/service"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -63,6 +65,7 @@ var (
 		"Если в будущем адрес изменится, не забудьте обновить его, отправив нам подобное сообщение с новыми данными."
 	successfulAddAddress = "🎉 Вы успешно добавили адрес организации!"
 	menuRequest          = "📋 Чтобы посмотреть наше меню, отправьте команду /menu или просто напишите \"Меню\". Так вы сможете ознакомиться с нашим разнообразным выбором блюд и выбрать то, что подходит именно вам!"
+	lunchTimePassed      = "Извините, но время обеда уже прошло или заказы вашей организации уже отправлены. Обратитесь к администратору за помощью @kriptabar"
 )
 
 type Bot struct {
@@ -258,6 +261,10 @@ func (b *Bot) Consume(ctx context.Context) {
 				if dish != nil {
 					err = b.addDishInOrder(ctx, dish, update.SentFrom().ID, update.Message.Chat.ID)
 					if err != nil {
+						switch {
+						case errors.As(err, &repository.ErrLunchTimePassed):
+							continue
+						}
 						logrus.Error(err.Error())
 						continue
 					}
@@ -519,6 +526,15 @@ func (b *Bot) addDishInOrder(ctx context.Context, dish *model.Dish, userTelegram
 	err := b.order.AddDish(newCtx, dish, userTelegramID)
 	if err != nil {
 		cancel()
+		switch {
+		case errors.As(err, &repository.ErrLunchTimePassed):
+			msg := tgbotapi.NewMessage(chatID, lunchTimePassed)
+			_, errSend := b.bot.Send(msg)
+			if errSend != nil {
+				return fmt.Errorf("send: %w", errSend)
+			}
+			return err
+		}
 		return fmt.Errorf("addDishInOrder: %w", err)
 	}
 
