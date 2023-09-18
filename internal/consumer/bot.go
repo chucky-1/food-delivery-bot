@@ -68,28 +68,34 @@ var (
 	lunchTimePassed          = "Извините, но время обеда уже прошло или заказы вашей организации уже отправлены. Обратитесь к администратору за помощью @kriptabar"
 	cannotCancelOrderMessage = "Извините, но мы не можем отменить ваш заказ. Он уже отправлен администратору. " +
 		"Если вы хотите это сделать, свяжитесь с нами @kriptabar"
+	tooLateLunchTimeMessage  = "Вы ввели слишком поздее время обеда. Самое поздее возможное время обеда: %d:%d"
+	tooEarlyLunchTimeMessage = "Вы ввели слишком раннее время обеда. Мы начинаем доставлять обеды с %d:%d"
 )
 
 type Bot struct {
-	bot         *tgbotapi.BotAPI
-	updatesChan tgbotapi.UpdatesChannel
-	auth        service.Auth
-	org         service.Organization
-	menu        service.Menu
-	order       service.Order
-	timezone    time.Duration
+	bot               *tgbotapi.BotAPI
+	updatesChan       tgbotapi.UpdatesChannel
+	auth              service.Auth
+	org               service.Organization
+	menu              service.Menu
+	order             service.Order
+	timezone          time.Duration
+	startedLunchTime  time.Duration
+	finishedLunchTime time.Duration
 }
 
 func NewBot(bot *tgbotapi.BotAPI, updatesChan tgbotapi.UpdatesChannel, auth service.Auth, org service.Organization,
-	menu service.Menu, order service.Order, timezone time.Duration) *Bot {
+	menu service.Menu, order service.Order, timezone time.Duration, startedLunchTime time.Duration, finishedLunchTime time.Duration) *Bot {
 	return &Bot{
-		bot:         bot,
-		updatesChan: updatesChan,
-		auth:        auth,
-		org:         org,
-		menu:        menu,
-		order:       order,
-		timezone:    timezone,
+		bot:               bot,
+		updatesChan:       updatesChan,
+		auth:              auth,
+		org:               org,
+		menu:              menu,
+		order:             order,
+		timezone:          timezone,
+		startedLunchTime:  startedLunchTime,
+		finishedLunchTime: finishedLunchTime,
 	}
 }
 
@@ -311,7 +317,7 @@ func (b *Bot) Consume(ctx context.Context) {
 						}
 						continue
 					}
-					organization, userError := handleCreateOrganization(messageWithoutFirstWord)
+					organization, userError := b.handleCreateOrganization(messageWithoutFirstWord)
 					if userError != "" {
 						msg := tgbotapi.NewMessage(update.Message.Chat.ID, userError)
 						_, err = b.bot.Send(msg)
@@ -585,7 +591,7 @@ func (b *Bot) addDishInOrder(ctx context.Context, dish *model.Dish, userTelegram
 	return nil
 }
 
-func handleCreateOrganization(message string) (*model.Organization, string) {
+func (b *Bot) handleCreateOrganization(message string) (*model.Organization, string) {
 	fields := strings.Fields(message)
 	lunchTime := fields[len(fields)-1:]
 	logrus.Debugf("handleCreateOrganization: luchTime: %s", lunchTime[0])
@@ -606,6 +612,14 @@ func handleCreateOrganization(message string) (*model.Organization, string) {
 	}
 	if minutes > 59 {
 		return nil, "Вы ввели некорректно время обеда. Значение минут не может быть больше 59"
+	}
+	minute := int(b.finishedLunchTime.Minutes()) % 60
+	if hours > int(b.finishedLunchTime.Hours()) || hours == int(b.finishedLunchTime.Hours()) && minutes > minute {
+		return nil, fmt.Sprintf(tooLateLunchTimeMessage, int(b.finishedLunchTime.Hours()), minute)
+	}
+	minute = int(b.startedLunchTime.Minutes()) % 60
+	if hours < int(b.startedLunchTime.Hours()) || hours == int(b.startedLunchTime.Hours()) && minutes < minute {
+		return nil, fmt.Sprintf(tooEarlyLunchTimeMessage, int(b.startedLunchTime.Hours()), minute)
 	}
 	logrus.Debugf("handleCreateOrganization: hours: %d, minutes: %d", hours, minutes)
 	orgName := strings.Join(fields[:len(fields)-1], " ")

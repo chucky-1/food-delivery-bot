@@ -63,7 +63,8 @@ func main() {
 	u.Timeout = cfg.TelegramBot.Timeout
 	updatesChan := bot.GetUpdatesChan(u)
 
-	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, cfg.Timezone)
+	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, cfg.Timezone,
+		cfg.StartedLunchTime, cfg.FinishedLunchTime)
 	go botConsumer.Consume(ctx)
 
 	usersReminder := producer.NewUsersReminder(bot, telegramService, orderService, cfg.Timezone, cfg.StartingMinutes, cfg.TickInterval,

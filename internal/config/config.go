@@ -14,6 +14,8 @@ type Config struct {
 	TickInterval                       time.Duration `env:"TICK_INTERVAL"`
 	PeriodOfTimeBeforeLunchToShipOrder time.Duration `env:"PERIOD_OF_TIME_BEFORE_LUNCH_TO_SHIP_ORDER"`
 	AdminChatID                        int64         `env:"ADMIN_CHAT_ID"`
+	StartedLunchTime                   time.Duration `env:"STARTED_LUNCH_TIME"`
+	FinishedLunchTime                  time.Duration `env:"FINISHED_LUNCH_TIME"`
 	Postgres
 	TelegramBot
 	Menu
