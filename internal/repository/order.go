@@ -21,6 +21,7 @@ type Order interface {
 	IsUserHaveConfirmedOrder(ctx context.Context, userTelegramID int64) (bool, error)
 	ConfirmOrderByUser(ctx context.Context, userTelegramID int64) error
 	ClearOrdersByUser(ctx context.Context, userTelegramID int64, date time.Time) error
+	ClearOrdersByUserWithCheckLunchTime(ctx context.Context, userTelegramID int64, date time.Time) error
 }
 
 type order struct {
@@ -198,6 +199,26 @@ func (o *order) ClearOrdersByUser(ctx context.Context, userTelegramID int64, dat
 	_, err := o.tr.extractTx(ctx).Exec(ctx, query, userTelegramID, date)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
+	}
+	return nil
+}
+
+func (o *order) ClearOrdersByUserWithCheckLunchTime(ctx context.Context, userTelegramID int64, date time.Time) error {
+	query := `
+	DELETE FROM internal.orders AS o
+	USING internal.users AS u
+	LEFT JOIN internal.organizations AS org ON u.organization_id = org.id
+	WHERE o.user_telegram_id = u.telegram_id
+	  AND o.date = $1
+	  AND org.lunch_time > $2
+	  AND u.telegram_id = $3;`
+	tag, err := o.tr.extractTx(ctx).Exec(ctx, query, date,
+		o.convertTimeToDurationMinusPeriodOfTimeBeforeLunchToShipOrder(date), userTelegramID)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrLunchTimePassed
 	}
 	return nil
 }

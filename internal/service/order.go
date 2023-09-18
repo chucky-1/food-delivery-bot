@@ -19,6 +19,7 @@ type Order interface {
 	IsUserHaveConfirmedOrder(ctx context.Context, userTelegramID int64) (bool, error)
 	ConfirmOrderByUser(ctx context.Context, userTelegramID int64) error
 	ClearOrdersByUser(ctx context.Context, userTelegramID int64, date time.Time) error
+	ClearOrdersByUserWithCheckLunchTime(ctx context.Context, userTelegramID int64, date time.Time) error
 }
 
 type order struct {
@@ -91,6 +92,14 @@ func (o *order) ClearOrdersByUser(ctx context.Context, userTelegramID int64, dat
 	err := o.repo.ClearOrdersByUser(ctx, userTelegramID, date)
 	if err != nil {
 		return fmt.Errorf("clearOrderByUser: %w", err)
+	}
+	return nil
+}
+
+func (o *order) ClearOrdersByUserWithCheckLunchTime(ctx context.Context, userTelegramID int64, date time.Time) error {
+	err := o.repo.ClearOrdersByUserWithCheckLunchTime(ctx, userTelegramID, date)
+	if err != nil {
+		return fmt.Errorf("clearOrdersByUserWithCheckLunchTime: %w", err)
 	}
 	return nil
 }
