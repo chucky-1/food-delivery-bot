@@ -11,6 +11,7 @@ import (
 
 	"github.com/chucky-1/food-delivery-bot/internal/model"
 	"github.com/chucky-1/food-delivery-bot/internal/producer"
+	"github.com/chucky-1/food-delivery-bot/internal/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
@@ -54,6 +55,8 @@ func main() {
 	telegramService := service.NewTelegram(telegramUserRep)
 	statisticsService := service.NewStatistics(statisticsRepo, orderRep, transactorRep)
 
+	msgStore := storage.NewMessage()
+
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBot.Token)
 	if err != nil {
 		logrus.Fatal(err)
@@ -63,7 +66,7 @@ func main() {
 	u.Timeout = cfg.TelegramBot.Timeout
 	updatesChan := bot.GetUpdatesChan(u)
 
-	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, cfg.Timezone,
+	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, msgStore, cfg.Timezone,
 		cfg.StartedLunchTime, cfg.FinishedLunchTime)
 	go botConsumer.Consume(ctx)
 
