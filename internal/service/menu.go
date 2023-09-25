@@ -10,8 +10,11 @@ import (
 
 type Menu interface {
 	GetAllCategories(ctx context.Context) ([]string, error)
-	GetAllDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error)
+	GetActiveDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error)
+	GetStoppedDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error)
 	GetDish(ctx context.Context, dish string) (*model.Dish, error)
+	StopDish(ctx context.Context, dish string) error
+	ActivateDish(ctx context.Context, dish string) error
 }
 
 type menu struct {
@@ -32,10 +35,18 @@ func (m *menu) GetAllCategories(ctx context.Context) ([]string, error) {
 	return categories, nil
 }
 
-func (m *menu) GetAllDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error) {
-	dishes, err := m.repo.GetAllDishesByCategory(ctx, category)
+func (m *menu) GetActiveDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error) {
+	dishes, err := m.repo.GetActiveDishesByCategory(ctx, category)
 	if err != nil {
-		return nil, fmt.Errorf("getAllDishesByCategory: %w", err)
+		return nil, fmt.Errorf("getAllActiveDishesByCategory: %w", err)
+	}
+	return dishes, nil
+}
+
+func (m *menu) GetStoppedDishesByCategory(ctx context.Context, category string) ([]*model.Dish, error) {
+	dishes, err := m.repo.GetStoppedDishesByCategory(ctx, category)
+	if err != nil {
+		return nil, fmt.Errorf("getAllStoppedDishesByCategory: %w", err)
 	}
 	return dishes, nil
 }
@@ -46,4 +57,20 @@ func (m *menu) GetDish(ctx context.Context, dish string) (*model.Dish, error) {
 		return nil, fmt.Errorf("getDish: %w", err)
 	}
 	return d, nil
+}
+
+func (m *menu) StopDish(ctx context.Context, dish string) error {
+	err := m.repo.StopDish(ctx, dish)
+	if err != nil {
+		return fmt.Errorf("stopDish: %w", err)
+	}
+	return nil
+}
+
+func (m *menu) ActivateDish(ctx context.Context, dish string) error {
+	err := m.repo.ActivateDish(ctx, dish)
+	if err != nil {
+		return fmt.Errorf("activateDish: %w", err)
+	}
+	return nil
 }

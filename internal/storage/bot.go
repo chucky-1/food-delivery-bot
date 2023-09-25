@@ -6,6 +6,8 @@ const (
 	CreateOrganization = "create"
 	JoinToOrganization = "join"
 	AddAddress         = "address"
+	StopDish           = "stop"
+	ActivateDish       = "activate"
 )
 
 var (

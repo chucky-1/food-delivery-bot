@@ -87,11 +87,13 @@ type Bot struct {
 	timezone          time.Duration
 	startedLunchTime  time.Duration
 	finishedLunchTime time.Duration
+	adminID           int64
+	adminChan         chan tgbotapi.Update
 }
 
 func NewBot(bot *tgbotapi.BotAPI, updatesChan tgbotapi.UpdatesChannel, auth service.Auth, org service.Organization,
 	menu service.Menu, order service.Order, msgStore *storage.Messages, timezone time.Duration,
-	startedLunchTime time.Duration, finishedLunchTime time.Duration) *Bot {
+	startedLunchTime time.Duration, finishedLunchTime time.Duration, adminID int64, adminChan chan tgbotapi.Update) *Bot {
 	return &Bot{
 		bot:               bot,
 		updatesChan:       updatesChan,
@@ -103,6 +105,8 @@ func NewBot(bot *tgbotapi.BotAPI, updatesChan tgbotapi.UpdatesChannel, auth serv
 		timezone:          timezone,
 		startedLunchTime:  startedLunchTime,
 		finishedLunchTime: finishedLunchTime,
+		adminID:           adminID,
+		adminChan:         adminChan,
 	}
 }
 
@@ -114,6 +118,10 @@ func (b *Bot) Consume(ctx context.Context) {
 			logrus.Infof("bot consumer stopped: %s", ctx.Err().Error())
 			return
 		case update := <-b.updatesChan:
+			if update.SentFrom().ID == b.adminID {
+				b.adminChan <- update
+				continue
+			}
 			if update.Message.IsCommand() {
 				switch update.Message.Command() {
 				case start:
@@ -441,7 +449,7 @@ func (b *Bot) sendMenu(ctx context.Context, userTelegramID, chatID int64) error 
 
 func (b *Bot) sendDishes(ctx context.Context, userTelegramID int64, category string, chatID int64) error {
 	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	dishes, err := b.menu.GetAllDishesByCategory(newCtx, category)
+	dishes, err := b.menu.GetActiveDishesByCategory(newCtx, category)
 	if err != nil {
 		cancel()
 		return err

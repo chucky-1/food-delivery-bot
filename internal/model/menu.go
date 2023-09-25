@@ -14,6 +14,7 @@ type Dish struct {
 	Name     string
 	Price    float32
 	Category string
+	Stop     bool
 }
 
 func (d *Dish) String() string {
