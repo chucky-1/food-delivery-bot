@@ -75,6 +75,7 @@ var (
 	tooLateLunchTimeMessage  = "Вы ввели слишком поздее время обеда. Самое поздее возможное время обеда: %d:%d. Попробуйте ещё раз."
 	tooEarlyLunchTimeMessage = "Вы ввели слишком раннее время обеда. Мы начинаем доставлять обеды с %d:%d. Попробуйте ещё раз."
 	weekendMessage           = "Извините, но сегодня выходной ☺"
+	errJoinToOrganization    = "Что то пошло не так, скорее всего такой организации не существует, проверьте ID"
 )
 
 type Bot struct {
@@ -377,6 +378,13 @@ func (b *Bot) Consume(ctx context.Context) {
 				case storage.JoinToOrganization:
 					err = b.joinToOrganization(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.Text, update.Message.MessageID)
 					if err != nil {
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, errJoinToOrganization)
+						_, errSend := b.bot.Send(msg)
+						if errSend != nil {
+							logrus.Errorf("JoinToOrganization: send: %s", err.Error())
+							continue
+						}
+						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2)
 						logrus.Errorf("joinToOrganization: %s", err.Error())
 						continue
 					}
