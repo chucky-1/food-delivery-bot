@@ -11,6 +11,7 @@ import (
 
 	"github.com/chucky-1/food-delivery-bot/internal/model"
 	"github.com/chucky-1/food-delivery-bot/internal/producer"
+	"github.com/chucky-1/food-delivery-bot/internal/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
@@ -45,7 +46,7 @@ func main() {
 	telegramUserRep := repository.NewTelegram(transactorRep)
 	orderRep := repository.NewOrder(transactorRep, cfg.Timezone, cfg.PeriodOfTimeBeforeLunchToShipOrder)
 	statisticsRepo := repository.NewStatistics(transactorRep)
-	menuRep := repository.NewMenu(cfg.Menu.Categories, dishesByCategories, allDishes)
+	menuRep := repository.NewMenu(cfg.Menu.Categories, dishesByCategories, dishesByCategories, make(map[string][]*model.Dish), allDishes)
 
 	authService := service.NewAuth(userRep, telegramUserRep, orgRep, transactorRep)
 	orgService := service.NewOrganization(orgRep)
@@ -53,6 +54,8 @@ func main() {
 	orderService := service.NewOrder(orderRep)
 	telegramService := service.NewTelegram(telegramUserRep)
 	statisticsService := service.NewStatistics(statisticsRepo, orderRep, transactorRep)
+
+	msgStore := storage.NewMessage()
 
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBot.Token)
 	if err != nil {
@@ -63,9 +66,13 @@ func main() {
 	u.Timeout = cfg.TelegramBot.Timeout
 	updatesChan := bot.GetUpdatesChan(u)
 
-	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, cfg.Timezone,
-		cfg.StartedLunchTime, cfg.FinishedLunchTime)
+	adminChan := make(chan tgbotapi.Update)
+	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, msgStore, cfg.Timezone,
+		cfg.StartedLunchTime, cfg.FinishedLunchTime, cfg.AdminChatID, adminChan)
 	go botConsumer.Consume(ctx)
+
+	adminConsumer := consumer.NewAdmin(bot, adminChan, menuService, cfg.AdminChatID)
+	go adminConsumer.Consume(ctx)
 
 	usersReminder := producer.NewUsersReminder(bot, telegramService, orderService, cfg.Timezone, cfg.StartingMinutes, cfg.TickInterval,
 		cfg.PeriodOfTimeBeforeLunchToShipOrder, cfg.FirstReminder, cfg.SecondReminder)
