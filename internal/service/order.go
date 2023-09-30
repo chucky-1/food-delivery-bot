@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/chucky-1/food-delivery-bot/internal/repository"
 	"github.com/google/uuid"
 )
+
+var ErrWeekend = errors.New("now is weekend")
 
 type Order interface {
 	AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error
@@ -33,6 +36,10 @@ func NewOrder(repo repository.Order) *order {
 }
 
 func (o *order) AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error {
+	if weekend() {
+		return ErrWeekend
+	}
+
 	err := o.repo.AddDish(ctx, dish, userTelegramID)
 	if err != nil {
 		return fmt.Errorf("addDish: %w", err)
@@ -102,4 +109,12 @@ func (o *order) ClearOrdersByUserWithCheckLunchTime(ctx context.Context, userTel
 		return fmt.Errorf("clearOrdersByUserWithCheckLunchTime: %w", err)
 	}
 	return nil
+}
+
+func weekend() bool {
+	day := time.Now().UTC().Weekday()
+	if day == 0 || day == 6 {
+		return true
+	}
+	return false
 }

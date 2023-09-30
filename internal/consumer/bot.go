@@ -74,6 +74,7 @@ var (
 		"Если вы хотите это сделать, свяжитесь с нами @kriptabar"
 	tooLateLunchTimeMessage  = "Вы ввели слишком поздее время обеда. Самое поздее возможное время обеда: %d:%d. Попробуйте ещё раз."
 	tooEarlyLunchTimeMessage = "Вы ввели слишком раннее время обеда. Мы начинаем доставлять обеды с %d:%d. Попробуйте ещё раз."
+	weekendMessage           = "Извините, но сегодня выходной ☺"
 )
 
 type Bot struct {
@@ -328,6 +329,14 @@ func (b *Bot) Consume(ctx context.Context) {
 					err = b.addDishInOrder(ctx, dish, update.SentFrom().ID, update.Message.Chat.ID)
 					if err != nil {
 						switch {
+						case errors.As(err, &service.ErrWeekend):
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, weekendMessage)
+							_, errSend := b.bot.Send(msg)
+							if errSend != nil {
+								logrus.Errorf("addDishInOrder: send: %s", errSend.Error())
+								continue
+							}
+							continue
 						case errors.As(err, &repository.ErrLunchTimePassed):
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, lunchTimePassed)
 							_, errSend := b.bot.Send(msg)
