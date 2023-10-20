@@ -289,7 +289,7 @@ func (b *Bot) Consume(ctx context.Context) {
 					if err != nil {
 						cancel()
 						switch {
-						case errors.As(err, &repository.ErrLunchTimePassed):
+						case errors.Is(err, repository.ErrLunchTimePassed):
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cannotCancelOrderMessage)
 							_, errSend := b.bot.Send(msg)
 							if errSend != nil {
@@ -330,7 +330,7 @@ func (b *Bot) Consume(ctx context.Context) {
 					err = b.addDishInOrder(ctx, dish, update.SentFrom().ID, update.Message.Chat.ID)
 					if err != nil {
 						switch {
-						case errors.As(err, &service.ErrWeekend):
+						case errors.Is(err, service.ErrWeekend):
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, weekendMessage)
 							_, errSend := b.bot.Send(msg)
 							if errSend != nil {
@@ -338,7 +338,7 @@ func (b *Bot) Consume(ctx context.Context) {
 								continue
 							}
 							continue
-						case errors.As(err, &repository.ErrLunchTimePassed):
+						case errors.Is(err, repository.ErrLunchTimePassed):
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, lunchTimePassed)
 							_, errSend := b.bot.Send(msg)
 							if errSend != nil {
