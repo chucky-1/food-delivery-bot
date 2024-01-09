@@ -24,8 +24,8 @@ func NewTelegram(tr *transactor) *telegram {
 }
 
 func (t *telegram) AddUser(ctx context.Context, u *model.TelegramUser) error {
-	query := `INSERT INTO telegram.users (id, chat_id, first_name) VALUES ($1,$2,$3)`
-	_, err := t.tr.extractTx(ctx).Exec(ctx, query, u.ID, u.ChatID, u.FirstName)
+	query := `INSERT INTO telegram.users (id, chat_id, first_name, last_name, username) VALUES ($1,$2,$3,$4,$5)`
+	_, err := t.tr.extractTx(ctx).Exec(ctx, query, u.ID, u.ChatID, u.FirstName, u.LastName, u.Username)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}

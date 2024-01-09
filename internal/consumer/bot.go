@@ -141,6 +141,8 @@ func (b *Bot) Consume(ctx context.Context) {
 						ID:        update.SentFrom().ID,
 						ChatID:    update.Message.Chat.ID,
 						FirstName: update.SentFrom().FirstName,
+						LastName:  update.SentFrom().LastName,
+						Username:  update.SentFrom().UserName,
 					})
 					if err != nil {
 						logrus.Errorf("registerCommand: %s", err.Error())
