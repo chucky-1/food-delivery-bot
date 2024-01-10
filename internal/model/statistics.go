@@ -1,11 +1,13 @@
 package model
 
-import (
-	"github.com/google/uuid"
-)
-
-type Statistics struct {
-	OrganizationID   uuid.UUID
+type Statistic struct {
 	OrganizationName string
-	OrdersAmount     float32
+	Employees        []*EmployeeDetail
+}
+
+type EmployeeDetail struct {
+	FirstName    string
+	LastName     string
+	Username     string
+	OrdersAmount float32
 }

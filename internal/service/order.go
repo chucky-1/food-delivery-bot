@@ -17,7 +17,6 @@ type Order interface {
 	AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error
 	GetAllDishesByCategory(ctx context.Context, userTelegramID int64) (map[string][]*model.Dish, error)
 	GetUserOrdersByOrganizationLunchTime(ctx context.Context, lunchTime string) (map[uuid.UUID]*model.OrderingData, error)
-	GetOrganizationsOrdersAmountByDate(ctx context.Context, date time.Time) ([]*model.Statistics, error)
 	IsUserHaveAnyOrders(ctx context.Context, userTelegramID int64) (bool, error)
 	IsUserHaveConfirmedOrder(ctx context.Context, userTelegramID int64) (bool, error)
 	ConfirmOrderByUser(ctx context.Context, userTelegramID int64) error
@@ -61,14 +60,6 @@ func (o *order) GetUserOrdersByOrganizationLunchTime(ctx context.Context, lunchT
 		return nil, fmt.Errorf("getUserOrdersByOrganizationLunchTime: %w", err)
 	}
 	return orders, nil
-}
-
-func (o *order) GetOrganizationsOrdersAmountByDate(ctx context.Context, date time.Time) ([]*model.Statistics, error) {
-	stats, err := o.repo.GetOrganizationsOrdersAmountByDate(ctx, date)
-	if err != nil {
-		return nil, fmt.Errorf("getOrganizationsOrdersAmountByDate: %w", err)
-	}
-	return stats, nil
 }
 
 func (o *order) IsUserHaveAnyOrders(ctx context.Context, userTelegramID int64) (bool, error) {
