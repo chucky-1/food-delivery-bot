@@ -133,10 +133,17 @@ func (o *order) GetUserOrdersByOrganizationLunchTime(ctx context.Context, lunchT
 
 func (o *order) GetOrdersAmount(ctx context.Context, from, to time.Time) (map[uuid.UUID]*model.Statistic, error) {
 	query := `
-		SELECT org.id, org.name, u.first_name, u.last_name, u.username, sum(o.dish_price)
+		SELECT 
+		    org.id, 
+		    org.name, 
+		    max(tg.first_name),
+    		max(tg.last_name),
+    		max(tg.username), 
+    		sum(o.dish_price)
 		FROM internal.orders o
 		LEFT JOIN internal.users u ON u.telegram_id = o.user_telegram_id
 		LEFT JOIN internal.organizations org ON org.id = u.organization_id
+		LEFT JOIN telegram.users tg ON u.telegram_id = tg.id
 		WHERE o.confirmed = true AND o.date >= $1 AND o.date <= $2
 		GROUP BY org.id, u.id`
 
