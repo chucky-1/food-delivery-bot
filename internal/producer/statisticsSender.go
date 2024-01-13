@@ -65,19 +65,22 @@ func (s *StatisticsSender) StatisticsSend(ctx context.Context) {
 
 func (s *StatisticsSender) sendReportsForYesterday(ctx context.Context) error {
 	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	stats, err := s.statistics.GetByDate(newCtx, time.Now().UTC().Add(s.timezone).Add(-24*time.Hour))
+	yesterday := time.Now().UTC().Add(s.timezone).Add(-24 * time.Hour)
+	stats, err := s.statistics.Get(newCtx, yesterday, yesterday)
 	if err != nil {
 		cancel()
 		return fmt.Errorf("sendReportsForYesterday: %w", err)
 	}
 	cancel()
 
-	msg := s.createReportMessage(stats, dayPeriod)
-	for _, chatID := range s.reportReceivers {
-		tgMsg := tgbotapi.NewMessage(chatID, msg)
-		_, err = s.bot.Send(tgMsg)
-		if err != nil {
-			return fmt.Errorf("send: %w", err)
+	for _, st := range stats {
+		msg := s.createReportMessage(st, dayPeriod)
+		for _, chatID := range s.reportReceivers {
+			tgMsg := tgbotapi.NewMessage(chatID, msg)
+			_, err = s.bot.Send(tgMsg)
+			if err != nil {
+				return fmt.Errorf("send: %w", err)
+			}
 		}
 	}
 	return nil
@@ -88,25 +91,27 @@ func (s *StatisticsSender) sendReportsForMonth(ctx context.Context) error {
 	logrus.Debugf("sendReportsForMonth: from: %s, to: %s", from.String(), to.String())
 
 	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	stats, err := s.statistics.GetByDatesInterval(newCtx, from, to)
+	stats, err := s.statistics.Get(newCtx, from, to)
 	if err != nil {
 		cancel()
 		return fmt.Errorf("sendReportsForMonth: %w", err)
 	}
 	cancel()
 
-	msg := s.createReportMessage(stats, monthPeriod)
-	for _, chatID := range s.reportReceivers {
-		tgMsg := tgbotapi.NewMessage(chatID, msg)
-		_, err = s.bot.Send(tgMsg)
-		if err != nil {
-			return fmt.Errorf("send: %w", err)
+	for _, st := range stats {
+		msg := s.createReportMessage(st, monthPeriod)
+		for _, chatID := range s.reportReceivers {
+			tgMsg := tgbotapi.NewMessage(chatID, msg)
+			_, err = s.bot.Send(tgMsg)
+			if err != nil {
+				return fmt.Errorf("send: %w", err)
+			}
 		}
 	}
 	return nil
 }
 
-func (s *StatisticsSender) createReportMessage(stats []*model.Statistics, period string) string {
+func (s *StatisticsSender) createReportMessage(stats *model.Statistic, period string) string {
 	yesterday := time.Now().UTC().Add(s.timezone).Add(-24 * time.Hour).Truncate(24 * time.Hour)
 	var (
 		msg         string
@@ -114,13 +119,13 @@ func (s *StatisticsSender) createReportMessage(stats []*model.Statistics, period
 	)
 	switch period {
 	case dayPeriod:
-		msg = fmt.Sprintf("Отчёт за %d %s\n", yesterday.Day(), translateMonthWithDeclination(yesterday.Month()))
+		msg = fmt.Sprintf("Отчёт за %d %s\n%s\n", yesterday.Day(), translateMonthWithDeclination(yesterday.Month()), stats.OrganizationName)
 	case monthPeriod:
-		msg = fmt.Sprintf("Отчёт за %s\n", translateMonthWithoutDeclination(yesterday.Month()))
+		msg = fmt.Sprintf("Отчёт за %s\n%s\n", translateMonthWithoutDeclination(yesterday.Month()), stats.OrganizationName)
 	}
 
-	for _, st := range stats {
-		msg = fmt.Sprintf("%s%s - %.2f\n", msg, st.OrganizationName, st.OrdersAmount)
+	for _, st := range stats.Employees {
+		msg = fmt.Sprintf("%s%s %s %s - %.2f\n", msg, st.FirstName, st.LastName, st.Username, st.OrdersAmount)
 		totalAmount += st.OrdersAmount
 	}
 	msg = fmt.Sprintf("%s\nИтого: %.2f", msg, totalAmount)

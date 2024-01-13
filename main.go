@@ -45,7 +45,6 @@ func main() {
 	orgRep := repository.NewOrganization(transactorRep)
 	telegramUserRep := repository.NewTelegram(transactorRep)
 	orderRep := repository.NewOrder(transactorRep, cfg.Timezone, cfg.PeriodOfTimeBeforeLunchToShipOrder)
-	statisticsRepo := repository.NewStatistics(transactorRep)
 	menuRep := repository.NewMenu(cfg.Menu.Categories, dishesByCategories, dishesByCategories, make(map[string][]*model.Dish), allDishes)
 
 	authService := service.NewAuth(userRep, telegramUserRep, orgRep, transactorRep)
@@ -53,7 +52,7 @@ func main() {
 	menuService := service.NewMenu(menuRep)
 	orderService := service.NewOrder(orderRep)
 	telegramService := service.NewTelegram(telegramUserRep)
-	statisticsService := service.NewStatistics(statisticsRepo, orderRep, transactorRep)
+	statisticsService := service.NewStatistics(orderRep, transactorRep)
 
 	msgStore := storage.NewMessage()
 
@@ -81,9 +80,6 @@ func main() {
 	orderSender := producer.NewOrderSender(bot, orderService, cfg.Timezone, cfg.StartingMinutes, cfg.TickInterval,
 		cfg.PeriodOfTimeBeforeLunchToShipOrder, cfg.AdminChatID)
 	go orderSender.Send(ctx)
-
-	statisticsConsumer := consumer.NewStatistics(statisticsService, cfg.Timezone)
-	go statisticsConsumer.Consume(ctx)
 
 	statisticsSender := producer.NewStatisticsSender(bot, statisticsService, cfg.Timezone, cfg.ReportHour, cfg.ReportReceivers)
 	go statisticsSender.StatisticsSend(ctx)

@@ -141,6 +141,8 @@ func (b *Bot) Consume(ctx context.Context) {
 						ID:        update.SentFrom().ID,
 						ChatID:    update.Message.Chat.ID,
 						FirstName: update.SentFrom().FirstName,
+						LastName:  update.SentFrom().LastName,
+						Username:  update.SentFrom().UserName,
 					})
 					if err != nil {
 						logrus.Errorf("registerCommand: %s", err.Error())
@@ -541,7 +543,7 @@ func (b *Bot) addDishInOrder(ctx context.Context, dish *model.Dish, userTelegram
 			totalPrice += d.Price
 		}
 	}
-	message = fmt.Sprintf("%s\nСумма вашего заказа: %.2f", message, totalPrice)
+	message = fmt.Sprintf("%s\nСумма вашего заказа: %.2f\n\nЧто бы отправить заказ, нажмите «Подтвердить заказ»", message, totalPrice)
 	msg := tgbotapi.NewMessage(chatID, message)
 	_, err = b.bot.Send(msg)
 	if err != nil {

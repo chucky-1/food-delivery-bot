@@ -16,7 +16,7 @@ type Order interface {
 	AddDish(ctx context.Context, dish *model.Dish, userTelegramID int64) error
 	GetAllDishesByCategory(ctx context.Context, userTelegramID int64) (map[string][]*model.Dish, error)
 	GetUserOrdersByOrganizationLunchTime(ctx context.Context, lunchTime string) (map[uuid.UUID]*model.OrderingData, error)
-	GetOrganizationsOrdersAmountByDate(ctx context.Context, date time.Time) ([]*model.Statistics, error)
+	GetOrdersAmount(ctx context.Context, from, to time.Time) (map[uuid.UUID]*model.Statistic, error)
 	IsUserHaveAnyOrders(ctx context.Context, userTelegramID int64) (bool, error)
 	IsUserHaveConfirmedOrder(ctx context.Context, userTelegramID int64) (bool, error)
 	ConfirmOrderByUser(ctx context.Context, userTelegramID int64) error
@@ -131,29 +131,51 @@ func (o *order) GetUserOrdersByOrganizationLunchTime(ctx context.Context, lunchT
 	return res, nil
 }
 
-func (o *order) GetOrganizationsOrdersAmountByDate(ctx context.Context, date time.Time) ([]*model.Statistics, error) {
+func (o *order) GetOrdersAmount(ctx context.Context, from, to time.Time) (map[uuid.UUID]*model.Statistic, error) {
 	query := `
-		SELECT org.id, sum(o.dish_price)
+		SELECT 
+		    org.id, 
+		    org.name, 
+		    max(tg.first_name),
+    		max(tg.last_name),
+    		max(tg.username), 
+    		sum(o.dish_price)
 		FROM internal.orders o
 		LEFT JOIN internal.users u ON u.telegram_id = o.user_telegram_id
 		LEFT JOIN internal.organizations org ON org.id = u.organization_id
-		WHERE o.confirmed = true AND o.date = $1
-		GROUP BY org.id`
+		LEFT JOIN telegram.users tg ON u.telegram_id = tg.id
+		WHERE o.confirmed = true AND o.date >= $1 AND o.date <= $2
+		GROUP BY org.id, u.id`
 
-	rows, err := o.tr.extractTx(ctx).Query(ctx, query, date)
+	rows, err := o.tr.extractTx(ctx).Query(ctx, query, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
-	res := make([]*model.Statistics, 0)
+	res := make(map[uuid.UUID]*model.Statistic)
 	for rows.Next() {
-		var st model.Statistics
-		err = rows.Scan(&st.OrganizationID, &st.OrdersAmount)
+		var (
+			orgID   uuid.UUID
+			orgName string
+			emp     model.EmployeeDetail
+		)
+		err = rows.Scan(&orgID, &orgName, &emp.FirstName, &emp.LastName, &emp.Username, &emp.OrdersAmount)
 		if err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
-		res = append(res, &st)
+
+		st, ok := res[orgID]
+		if !ok {
+			res[orgID] = &model.Statistic{
+				OrganizationName: orgName,
+				Employees: []*model.EmployeeDetail{
+					&emp,
+				},
+			}
+		} else {
+			st.Employees = append(st.Employees, &emp)
+		}
 	}
 	return res, nil
 }
