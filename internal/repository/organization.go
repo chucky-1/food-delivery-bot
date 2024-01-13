@@ -9,7 +9,7 @@ import (
 )
 
 type Organization interface {
-	Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error
+	Add(ctx context.Context, org *model.Organization) error
 	Join(ctx context.Context, organizationID uuid.UUID, userTelegramID int64) error
 	UpdateAddress(ctx context.Context, telegramUserID int64, address string) error
 }
@@ -24,9 +24,9 @@ func NewOrganization(tr *transactor) *organization {
 	}
 }
 
-func (o *organization) Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error {
-	query := `INSERT INTO internal.organizations (id, name, owner_id, lunch_time) VALUES ($1,$2,(SELECT id FROM internal.users WHERE telegram_id=$3),$4)`
-	_, err := o.tr.extractTx(ctx).Exec(ctx, query, org.ID, org.Name, ownerTelegramID, org.LunchTime)
+func (o *organization) Add(ctx context.Context, org *model.Organization) error {
+	query := `INSERT INTO internal.organizations (id, name, lunch_time) VALUES ($1,$2,$3)`
+	_, err := o.tr.extractTx(ctx).Exec(ctx, query, org.ID, org.Name, org.LunchTime)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
