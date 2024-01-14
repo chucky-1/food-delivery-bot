@@ -10,9 +10,9 @@ import (
 )
 
 type Organization interface {
-	Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error
+	Add(ctx context.Context, org *model.Organization) error
 	Join(ctx context.Context, organizationID uuid.UUID, userTelegramID int64) error
-	UpdateAddress(ctx context.Context, telegramUserID int64, address string) error
+	UpdateAddress(ctx context.Context, id uuid.UUID, address string) error
 }
 
 type organization struct {
@@ -25,8 +25,8 @@ func NewOrganization(repo repository.Organization) *organization {
 	}
 }
 
-func (o *organization) Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error {
-	if err := o.repo.Add(ctx, org, ownerTelegramID); err != nil {
+func (o *organization) Add(ctx context.Context, org *model.Organization) error {
+	if err := o.repo.Add(ctx, org); err != nil {
 		return fmt.Errorf("add: %w", err)
 	}
 	return nil
@@ -39,8 +39,8 @@ func (o *organization) Join(ctx context.Context, organizationID uuid.UUID, userT
 	return nil
 }
 
-func (o *organization) UpdateAddress(ctx context.Context, telegramUserID int64, address string) error {
-	err := o.repo.UpdateAddress(ctx, telegramUserID, address)
+func (o *organization) UpdateAddress(ctx context.Context, id uuid.UUID, address string) error {
+	err := o.repo.UpdateAddress(ctx, id, address)
 	if err != nil {
 		return fmt.Errorf("updateAddress: %w", err)
 	}

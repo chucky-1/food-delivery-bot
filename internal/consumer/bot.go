@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/chucky-1/food-delivery-bot/internal/model"
@@ -41,36 +39,17 @@ var (
 		"Приятного аппетита! 🍽😊\n\n" +
 		"/register"
 	successfulRegistered = "🎉 Поздравляем вас с успешной регистрацией! 🎉\n\n" +
-		"Теперь вы можете создать свою организацию или присоединиться к существующей.\n\n" +
-		"Для создания новой организации нажмите /create\n\n" +
+		"Мы будем использовать ваш username, first_name и last_name из telegram для синхронизации с вашей бухгалтерией\n\n" +
 		"Для вступления в организацию нажмти /join"
-	createOrganization = "Отправьте сообщение в следующем формате: \n\n" +
-		"Название организации 12:30\n\n" +
-		"Где 12:30 - это время, к которому вы хотели бы получить свой обед"
-	joinToOrganization = "Отправьте сообщение вида: \n\n" +
-		"0dea30c3-caac-476c-9c18-0cf12b6923dd\n\n" +
-		"Это уникальный идентификатор вашей организации. Вы можете получить этот идентификатор у пользователя, который создал организацию."
-	successfulOrganizationRegistered = "🎉 Поздравляем! Вы успешно зарегистрировали свою организацию: %s\n\n" +
-		"Теперь, чтобы присоединиться к ней, потребуется уникальный идентификатор (ID), который мы пришлем в следующем сообщении.\n\n" +
-		"Вам не нужно вступать в свою организауцию. Вы уже состоите в ней."
-	successfulJoinOrganization               = "🎉 Поздравляем! Вы успешно вступили в организацию! 🎉"
-	successfulClearOrder                     = "😊 Мы удалили всё из вашего заказа"
-	successfulConfirmOrder                   = "🎉 Заказ успешно подтверждён! Он будет передан нашему администратору вместе с другими заказами для вашей организации. Спасибо за выбор нас! Приятного аппетита! 😊"
-	successfulCancelOrder                    = "😊 Вы успешно отменили заказ"
-	userAlreadyHasConfirmedOrder             = "В данный момент, изменение вашего заказа недоступно, однако вы можете его отменить и создать новый заказ, если необходимо."
-	addAddressAfterCreateOrganizationMessage = "🏢 Теперь давайте добавим адрес вашей организации, чтобы мы знали, куда доставлять ваши обеды. " +
-		"Просто отправьте сообщение с адресом в следующем формате:\n\n" +
-		"ул. Толбухина 18/2\n\n" +
-		"Вы можете предоставить адрес в любой форме и даже добавить комментарии. Главное, чтобы мы точно знали, куда направлять ваш заказ. " +
-		"Если в будущем адрес изменится, не забудьте обновить его, отправив нам подобное сообщение с новыми данными."
-	addAddressMessage = "Отправьте сообщение с адресом в следующем формате:\n\n" +
-		"ул. Толбухина 18/2\n\n" +
-		"Вы можете предоставить адрес в любой форме и даже добавить комментарии. Главное, чтобы мы точно знали, куда направлять ваш заказ. " +
-		"Если в будущем адрес изменится, не забудьте обновить его, отправив нам подобное сообщение с новыми данными."
-	successfulAddAddress     = "🎉 Вы успешно добавили адрес организации!"
-	menuRequest              = "📋 Чтобы посмотреть наше меню, отправьте команду /menu или просто напишите \"Меню\". Так вы сможете ознакомиться с нашим разнообразным выбором блюд и выбрать то, что подходит именно вам!"
-	lunchTimePassed          = "Извините, но время обеда уже прошло или заказы вашей организации уже отправлены. Обратитесь к администратору за помощью @kriptabar"
-	cannotCancelOrderMessage = "Извините, но мы не можем отменить ваш заказ. Он уже отправлен администратору. " +
+	joinToOrganization           = "Введите ID организации \n\n"
+	successfulJoinOrganization   = "🎉 Поздравляем! Вы успешно вступили в организацию! 🎉"
+	successfulClearOrder         = "😊 Мы удалили всё из вашего заказа"
+	successfulConfirmOrder       = "🎉 Заказ успешно подтверждён! Он будет передан нашему администратору вместе с другими заказами для вашей организации. Спасибо за выбор нас! Приятного аппетита! 😊"
+	successfulCancelOrder        = "😊 Вы успешно отменили заказ"
+	userAlreadyHasConfirmedOrder = "В данный момент, изменение вашего заказа недоступно, однако вы можете его отменить и создать новый заказ, если необходимо."
+	menuRequest                  = "📋 Чтобы посмотреть наше меню, отправьте команду /menu или просто напишите \"Меню\". Так вы сможете ознакомиться с нашим разнообразным выбором блюд и выбрать то, что подходит именно вам!"
+	lunchTimePassed              = "Извините, но время обеда уже прошло или заказы вашей организации уже отправлены. Обратитесь к администратору за помощью @kriptabar"
+	cannotCancelOrderMessage     = "Извините, но мы не можем отменить ваш заказ. Он уже отправлен администратору. " +
 		"Если вы хотите это сделать, свяжитесь с нами @kriptabar"
 	tooLateLunchTimeMessage  = "Вы ввели слишком поздее время обеда. Самое поздее возможное время обеда: %d:%d. Попробуйте ещё раз."
 	tooEarlyLunchTimeMessage = "Вы ввели слишком раннее время обеда. Мы начинаем доставлять обеды с %d:%d. Попробуйте ещё раз."
@@ -79,36 +58,32 @@ var (
 )
 
 type Bot struct {
-	bot               *tgbotapi.BotAPI
-	updatesChan       tgbotapi.UpdatesChannel
-	auth              service.Auth
-	org               service.Organization
-	menu              service.Menu
-	order             service.Order
-	msgStore          *storage.Messages
-	timezone          time.Duration
-	startedLunchTime  time.Duration
-	finishedLunchTime time.Duration
-	adminID           int64
-	adminChan         chan tgbotapi.Update
+	bot         *tgbotapi.BotAPI
+	updatesChan tgbotapi.UpdatesChannel
+	auth        service.Auth
+	org         service.Organization
+	menu        service.Menu
+	order       service.Order
+	msgStore    *storage.Messages
+	timezone    time.Duration
+	adminID     int64
+	adminChan   chan tgbotapi.Update
 }
 
 func NewBot(bot *tgbotapi.BotAPI, updatesChan tgbotapi.UpdatesChannel, auth service.Auth, org service.Organization,
-	menu service.Menu, order service.Order, msgStore *storage.Messages, timezone time.Duration,
-	startedLunchTime time.Duration, finishedLunchTime time.Duration, adminID int64, adminChan chan tgbotapi.Update) *Bot {
+	menu service.Menu, order service.Order, msgStore *storage.Messages, timezone time.Duration, adminID int64,
+	adminChan chan tgbotapi.Update) *Bot {
 	return &Bot{
-		bot:               bot,
-		updatesChan:       updatesChan,
-		auth:              auth,
-		org:               org,
-		menu:              menu,
-		order:             order,
-		msgStore:          msgStore,
-		timezone:          timezone,
-		startedLunchTime:  startedLunchTime,
-		finishedLunchTime: finishedLunchTime,
-		adminID:           adminID,
-		adminChan:         adminChan,
+		bot:         bot,
+		updatesChan: updatesChan,
+		auth:        auth,
+		org:         org,
+		menu:        menu,
+		order:       order,
+		msgStore:    msgStore,
+		timezone:    timezone,
+		adminID:     adminID,
+		adminChan:   adminChan,
 	}
 }
 
@@ -165,16 +140,6 @@ func (b *Bot) Consume(ctx context.Context) {
 						continue
 					}
 					continue
-				case storage.CreateOrganization:
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, createOrganization)
-					_, err := b.bot.Send(msg)
-					if err != nil {
-						logrus.Errorf("createOrganization: send: %s", err.Error())
-						continue
-					}
-
-					b.msgStore.WaitMessage(update.SentFrom().ID, storage.CreateOrganization, update.Message.MessageID+2)
-					continue
 
 				case storage.JoinToOrganization:
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, joinToOrganization)
@@ -184,20 +149,8 @@ func (b *Bot) Consume(ctx context.Context) {
 						continue
 					}
 
-					b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2)
+					b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2, "")
 					continue
-
-				case storage.AddAddress:
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, addAddressMessage)
-					_, err := b.bot.Send(msg)
-					if err != nil {
-						logrus.Errorf("createOrganization: send: %s", err.Error())
-						continue
-					}
-
-					b.msgStore.WaitMessage(update.SentFrom().ID, storage.AddAddress, update.Message.MessageID+2)
-					continue
-
 				}
 			} else {
 				switch update.Message.Text {
@@ -369,14 +322,6 @@ func (b *Bot) Consume(ctx context.Context) {
 					continue
 				}
 				switch msgType.Action {
-				case storage.CreateOrganization:
-					err = b.createOrganization(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.Text, update.Message.MessageID)
-					if err != nil {
-						logrus.Errorf("createOrganization: %s", err.Error())
-						continue
-					}
-					continue
-
 				case storage.JoinToOrganization:
 					err = b.joinToOrganization(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.Text, update.Message.MessageID)
 					if err != nil {
@@ -386,16 +331,8 @@ func (b *Bot) Consume(ctx context.Context) {
 							logrus.Errorf("JoinToOrganization: send: %s", err.Error())
 							continue
 						}
-						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2)
+						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2, "")
 						logrus.Errorf("joinToOrganization: %s", err.Error())
-						continue
-					}
-					continue
-
-				case storage.AddAddress:
-					err = b.addAddress(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.Text)
-					if err != nil {
-						logrus.Errorf("addAddress: %s", err.Error())
 						continue
 					}
 					continue
@@ -552,66 +489,6 @@ func (b *Bot) addDishInOrder(ctx context.Context, dish *model.Dish, userTelegram
 	return nil
 }
 
-func (b *Bot) createOrganization(ctx context.Context, userTelegramID, chatID int64, message string, messageID int) error {
-	// format message: create Название организации 12:30
-	// 12:30 - lunchTime
-	if len(strings.Split(message, " ")) < 2 {
-		msg := tgbotapi.NewMessage(chatID, "Вы ввели некорректную строку. Попробуйте ещё раз")
-		_, err := b.bot.Send(msg)
-		if err != nil {
-			return fmt.Errorf("send: %w", err)
-		}
-		b.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2)
-		return nil
-	}
-	organization, errHandle := b.handleCreateOrganization(message)
-	if errHandle != "" {
-		msg := tgbotapi.NewMessage(chatID, errHandle)
-		_, errSend := b.bot.Send(msg)
-		if errSend != nil {
-			return fmt.Errorf("send: %w", errSend)
-		}
-		b.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2)
-		return nil
-	}
-
-	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	err := b.org.Add(newCtx, organization, userTelegramID)
-	if err != nil {
-		cancel()
-		return fmt.Errorf("add: %w", err)
-	}
-
-	if err = b.org.Join(newCtx, organization.ID, userTelegramID); err != nil {
-		cancel()
-		return fmt.Errorf("joun: %w", err)
-	}
-	cancel()
-
-	b.msgStore.WaitMessage(userTelegramID, storage.AddAddress, messageID+2)
-
-	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(successfulOrganizationRegistered, organization.Name))
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-
-	msg = tgbotapi.NewMessage(chatID, organization.ID.String())
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-
-	<-time.After(3 * time.Second)
-
-	msg = tgbotapi.NewMessage(chatID, addAddressAfterCreateOrganizationMessage)
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-	return nil
-}
-
 func (b *Bot) joinToOrganization(ctx context.Context, userTelegramID, chatID int64, message string, messageID int) error {
 	uid, errParse := uuid.Parse(message)
 	if errParse != nil {
@@ -620,7 +497,7 @@ func (b *Bot) joinToOrganization(ctx context.Context, userTelegramID, chatID int
 		if err != nil {
 			return fmt.Errorf("send: %w", err)
 		}
-		b.msgStore.WaitMessage(userTelegramID, storage.JoinToOrganization, messageID+2)
+		b.msgStore.WaitMessage(userTelegramID, storage.JoinToOrganization, messageID+2, "")
 		return nil
 	}
 
@@ -642,67 +519,4 @@ func (b *Bot) joinToOrganization(ctx context.Context, userTelegramID, chatID int
 		return fmt.Errorf("send: %w", err)
 	}
 	return nil
-}
-
-func (b *Bot) addAddress(ctx context.Context, userTelegramID, chatID int64, message string) error {
-	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	err := b.org.UpdateAddress(newCtx, userTelegramID, message)
-	if err != nil {
-		cancel()
-		return fmt.Errorf("updateAddress: %w", err)
-	}
-	cancel()
-
-	msg := tgbotapi.NewMessage(chatID, successfulAddAddress)
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-
-	msg = tgbotapi.NewMessage(chatID, menuRequest)
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-	return nil
-}
-
-func (b *Bot) handleCreateOrganization(message string) (*model.Organization, string) {
-	fields := strings.Fields(message)
-	lunchTime := fields[len(fields)-1:]
-	logrus.Debugf("handleCreateOrganization: luchTime: %s", lunchTime[0])
-	splitLunchTime := strings.Split(lunchTime[0], ":")
-	if len(splitLunchTime) != 2 {
-		return nil, "Вы ввели некорректно время обеда. Попробуйте ещё раз."
-	}
-	hours, err := strconv.Atoi(splitLunchTime[0])
-	if err != nil {
-		return nil, "Вы ввели некорректно время обеда. Попробуйте ещё раз"
-	}
-	if hours > 23 {
-		return nil, "Вы ввели некорректно время обеда. Значение часов не может быть больше 23. Попробуйте ещё раз"
-	}
-	minutes, err := strconv.Atoi(splitLunchTime[1])
-	if err != nil {
-		return nil, "Вы ввели некорректно время обеда. Попробуйте ещё раз"
-	}
-	if minutes > 59 {
-		return nil, "Вы ввели некорректно время обеда. Значение минут не может быть больше 59. Попробуйте ещё раз"
-	}
-	minute := int(b.finishedLunchTime.Minutes()) % 60
-	if hours > int(b.finishedLunchTime.Hours()) || hours == int(b.finishedLunchTime.Hours()) && minutes > minute {
-		return nil, fmt.Sprintf(tooLateLunchTimeMessage, int(b.finishedLunchTime.Hours()), minute)
-	}
-	minute = int(b.startedLunchTime.Minutes()) % 60
-	if hours < int(b.startedLunchTime.Hours()) || hours == int(b.startedLunchTime.Hours()) && minutes < minute {
-		return nil, fmt.Sprintf(tooEarlyLunchTimeMessage, int(b.startedLunchTime.Hours()), minute)
-	}
-	logrus.Debugf("handleCreateOrganization: hours: %d, minutes: %d", hours, minutes)
-	orgName := strings.Join(fields[:len(fields)-1], " ")
-	logrus.Debugf("handleCreateOrganization: orgName: %s", orgName)
-	return &model.Organization{
-		ID:        uuid.New(),
-		Name:      orgName,
-		LunchTime: time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute,
-	}, ""
 }

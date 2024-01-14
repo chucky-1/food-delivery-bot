@@ -67,10 +67,10 @@ func main() {
 
 	adminChan := make(chan tgbotapi.Update)
 	botConsumer := consumer.NewBot(bot, updatesChan, authService, orgService, menuService, orderService, msgStore, cfg.Timezone,
-		cfg.StartedLunchTime, cfg.FinishedLunchTime, cfg.AdminChatID, adminChan)
+		cfg.AdminChatID, adminChan)
 	go botConsumer.Consume(ctx)
 
-	adminConsumer := consumer.NewAdmin(bot, adminChan, menuService, cfg.AdminChatID)
+	adminConsumer := consumer.NewAdmin(bot, adminChan, orgService, menuService, msgStore, cfg.AdminChatID, cfg.StartedLunchTime, cfg.FinishedLunchTime)
 	go adminConsumer.Consume(ctx)
 
 	usersReminder := producer.NewUsersReminder(bot, telegramService, orderService, cfg.Timezone, cfg.StartingMinutes, cfg.TickInterval,

@@ -9,6 +9,5 @@ import (
 type Organization struct {
 	ID        uuid.UUID
 	Name      string
-	OwnerID   uuid.UUID
 	LunchTime time.Duration
 }

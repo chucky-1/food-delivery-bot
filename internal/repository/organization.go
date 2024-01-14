@@ -9,9 +9,9 @@ import (
 )
 
 type Organization interface {
-	Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error
+	Add(ctx context.Context, org *model.Organization) error
 	Join(ctx context.Context, organizationID uuid.UUID, userTelegramID int64) error
-	UpdateAddress(ctx context.Context, telegramUserID int64, address string) error
+	UpdateAddress(ctx context.Context, id uuid.UUID, address string) error
 }
 
 type organization struct {
@@ -24,9 +24,9 @@ func NewOrganization(tr *transactor) *organization {
 	}
 }
 
-func (o *organization) Add(ctx context.Context, org *model.Organization, ownerTelegramID int64) error {
-	query := `INSERT INTO internal.organizations (id, name, owner_id, lunch_time) VALUES ($1,$2,(SELECT id FROM internal.users WHERE telegram_id=$3),$4)`
-	_, err := o.tr.extractTx(ctx).Exec(ctx, query, org.ID, org.Name, ownerTelegramID, org.LunchTime)
+func (o *organization) Add(ctx context.Context, org *model.Organization) error {
+	query := `INSERT INTO internal.organizations (id, name, lunch_time) VALUES ($1,$2,$3)`
+	_, err := o.tr.extractTx(ctx).Exec(ctx, query, org.ID, org.Name, org.LunchTime)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
@@ -42,15 +42,12 @@ func (o *organization) Join(ctx context.Context, organizationID uuid.UUID, userT
 	return nil
 }
 
-func (o *organization) UpdateAddress(ctx context.Context, telegramUserID int64, address string) error {
+func (o *organization) UpdateAddress(ctx context.Context, id uuid.UUID, address string) error {
 	query := `UPDATE internal.organizations
 	SET address = $1
-    WHERE id = (
-    	SELECT o.id FROM internal.organizations o
-    	LEFT JOIN internal.users u ON o.id = u.organization_id
-    	WHERE u.telegram_id = $2)`
+    WHERE id = $2`
 
-	_, err := o.tr.extractTx(ctx).Exec(ctx, query, address, telegramUserID)
+	_, err := o.tr.extractTx(ctx).Exec(ctx, query, address, id)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}

@@ -3,9 +3,9 @@ package storage
 import "fmt"
 
 const (
-	CreateOrganization = "create"
+	CreateOrganization = "create_organization"
 	JoinToOrganization = "join"
-	AddAddress         = "address"
+	AddAddress         = "add_address"
 	StopDish           = "stop"
 	ActivateDish       = "activate"
 )
@@ -18,6 +18,9 @@ var (
 type MessageType struct {
 	Action    string
 	MessageID int
+
+	// Data if action has 2 step
+	DataOnFirstStep string
 }
 
 type Messages struct {
@@ -30,10 +33,11 @@ func NewMessage() *Messages {
 	}
 }
 
-func (m *Messages) WaitMessage(userID int64, action string, messageID int) {
+func (m *Messages) WaitMessage(userID int64, action string, messageID int, data string) {
 	m.storeByUserID[userID] = &MessageType{
-		Action:    action,
-		MessageID: messageID,
+		Action:          action,
+		MessageID:       messageID,
+		DataOnFirstStep: data,
 	}
 }
 
