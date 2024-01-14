@@ -11,7 +11,7 @@ import (
 type Organization interface {
 	Add(ctx context.Context, org *model.Organization) error
 	Join(ctx context.Context, organizationID uuid.UUID, userTelegramID int64) error
-	UpdateAddress(ctx context.Context, telegramUserID int64, address string) error
+	UpdateAddress(ctx context.Context, id uuid.UUID, address string) error
 }
 
 type organization struct {
@@ -42,15 +42,12 @@ func (o *organization) Join(ctx context.Context, organizationID uuid.UUID, userT
 	return nil
 }
 
-func (o *organization) UpdateAddress(ctx context.Context, telegramUserID int64, address string) error {
+func (o *organization) UpdateAddress(ctx context.Context, id uuid.UUID, address string) error {
 	query := `UPDATE internal.organizations
 	SET address = $1
-    WHERE id = (
-    	SELECT o.id FROM internal.organizations o
-    	LEFT JOIN internal.users u ON o.id = u.organization_id
-    	WHERE u.telegram_id = $2)`
+    WHERE id = $2`
 
-	_, err := o.tr.extractTx(ctx).Exec(ctx, query, address, telegramUserID)
+	_, err := o.tr.extractTx(ctx).Exec(ctx, query, address, id)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}

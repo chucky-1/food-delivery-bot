@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,26 +19,32 @@ import (
 var (
 	welcomeAdminMessage = "/all_stopped_dishes - показать все блюда на стопе\n\n" +
 		"/all_active_dishes - показать доступные для заказа блюда\n\n" +
-		"Что бы поставить блюдо на стоп, жмём /all_active_dishes, выбираем блюдо\n\n" +
-		"Что бы снять блюдо со стопа, жмём /all_stopped_dishes, выбираем блюдо\n\n" +
-		"Создать организацию /create_organization\n\n" +
+		"Что бы поставить блюдо на стоп, жмём\n/all_active_dishes, выбираем блюдо\n\n" +
+		"Что бы снять блюдо со стопа, жмём\n/all_stopped_dishes, выбираем блюдо\n\n" +
+		"Создать организацию\n/create_organization\n\n" +
+		"Добавить адрес организации\n/add_address\n\n" +
 		"/info - показать это сообщение (можно ввести эту команду руками, когда это сообщение потеряется в куче других сообщений)"
 	createOrganization = "Отправьте сообщение в следующем формате: \n\n" +
 		"Название организации 12:30\n\n" +
 		"Где 12:30 - это время, к которому нужно осуществить доставку"
 	successfulOrganizationRegistered = "Организация успешно создана: %s\n\n" +
-		"Чтобы присоединиться к ней, потребуется уникальный идентификатор (ID):"
-	addAddressAfterCreateOrganizationMessage = "Добавьте адрес организации, куда доставлять обеды. " +
-		"Пример:\n\n" +
+		"Чтобы присоединиться к ней, потребуется уникальный идентификатор (ID), который будет выслан следующим сообщением\n\n" +
+		"Что бы добавить адрес огранизации нажмите /add_address"
+	addAddressStep1 = "Введите ID организации"
+	addAddressStep2 = "Введите адрес, куда доставлять обеды\n\n" +
+		"Пример:\n" +
 		"ул. Толбухина 18/2"
 	successfulAddAddress = "Адрес организации успешно добавлен"
 )
 
+var (
+	errInvalidOrganizationID = errors.New("invalid organization id")
+)
+
 const (
-	info                      = "info"
-	allActivateDishes         = "all_active_dishes"
-	allStoppedDishes          = "all_stopped_dishes"
-	createOrganizationCommand = "create_organization"
+	info              = "info"
+	allActivateDishes = "all_active_dishes"
+	allStoppedDishes  = "all_stopped_dishes"
 )
 
 type Admin struct {
@@ -115,7 +122,7 @@ func (a *Admin) Consume(ctx context.Context) {
 					cancel()
 					continue
 
-				case createOrganizationCommand:
+				case storage.CreateOrganization:
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, createOrganization)
 					_, err = a.bot.Send(msg)
 					if err != nil {
@@ -123,8 +130,20 @@ func (a *Admin) Consume(ctx context.Context) {
 						continue
 					}
 
-					a.msgStore.WaitMessage(update.SentFrom().ID, storage.CreateOrganization, update.Message.MessageID+2)
+					a.msgStore.WaitMessage(update.SentFrom().ID, storage.CreateOrganization, update.Message.MessageID+2, "")
 					continue
+
+				case storage.AddAddress:
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, addAddressStep1)
+					_, err = a.bot.Send(msg)
+					if err != nil {
+						logrus.Errorf("createOrganization: send: %s", err.Error())
+						continue
+					}
+
+					a.msgStore.WaitMessage(update.SentFrom().ID, storage.AddAddress, update.Message.MessageID+2, "")
+					continue
+
 				}
 			} else {
 				switch update.Message.Text {
@@ -222,7 +241,8 @@ func (a *Admin) Consume(ctx context.Context) {
 					continue
 
 				case storage.AddAddress:
-					err = a.addAddress(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.Text)
+					err = a.addAddress(ctx, update.SentFrom().ID, update.Message.Chat.ID, update.Message.MessageID,
+						update.Message.Text, msgType.DataOnFirstStep)
 					if err != nil {
 						logrus.Errorf("addAddress: %s", err.Error())
 						continue
@@ -310,7 +330,7 @@ func (a *Admin) createOrganization(ctx context.Context, userTelegramID, chatID i
 		if err != nil {
 			return fmt.Errorf("send: %w", err)
 		}
-		a.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2)
+		a.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2, "")
 		return nil
 	}
 	organization, errHandle := a.handleCreateOrganization(message)
@@ -320,7 +340,7 @@ func (a *Admin) createOrganization(ctx context.Context, userTelegramID, chatID i
 		if errSend != nil {
 			return fmt.Errorf("send: %w", errSend)
 		}
-		a.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2)
+		a.msgStore.WaitMessage(userTelegramID, storage.CreateOrganization, messageID+2, "")
 		return nil
 	}
 
@@ -331,8 +351,6 @@ func (a *Admin) createOrganization(ctx context.Context, userTelegramID, chatID i
 		return fmt.Errorf("add: %w", err)
 	}
 	cancel()
-
-	a.msgStore.WaitMessage(userTelegramID, storage.AddAddress, messageID+2)
 
 	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(successfulOrganizationRegistered, organization.Name))
 	_, err = a.bot.Send(msg)
@@ -346,13 +364,6 @@ func (a *Admin) createOrganization(ctx context.Context, userTelegramID, chatID i
 		return fmt.Errorf("send: %w", err)
 	}
 
-	<-time.After(3 * time.Second)
-
-	msg = tgbotapi.NewMessage(chatID, addAddressAfterCreateOrganizationMessage)
-	_, err = a.bot.Send(msg)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
 	return nil
 }
 
@@ -396,9 +407,35 @@ func (a *Admin) handleCreateOrganization(message string) (*model.Organization, s
 	}, ""
 }
 
-func (a *Admin) addAddress(ctx context.Context, userTelegramID, chatID int64, message string) error {
+func (a *Admin) addAddress(ctx context.Context, userTelegramID, chatID int64, messageID int, message, organizationID string) error {
+	var (
+		orgID uuid.UUID
+		err   error
+	)
+	if organizationID != "" {
+		orgID, err = uuid.Parse(organizationID)
+		if err != nil {
+			return fmt.Errorf("parse: %w", err)
+		}
+	} else {
+		orgID, err = uuid.Parse(message)
+		if err != nil {
+			logrus.Errorf("addAddress: parse: %s, message: %s", err.Error(), message)
+			return errInvalidOrganizationID
+		}
+		a.msgStore.WaitMessage(userTelegramID, storage.AddAddress, messageID+2, orgID.String())
+
+		msg := tgbotapi.NewMessage(chatID, addAddressStep2)
+		_, err = a.bot.Send(msg)
+		if err != nil {
+			return fmt.Errorf("send: %w", err)
+		}
+
+		return nil
+	}
+
 	newCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	err := a.org.UpdateAddress(newCtx, userTelegramID, message)
+	err = a.org.UpdateAddress(newCtx, orgID, message)
 	if err != nil {
 		cancel()
 		return fmt.Errorf("updateAddress: %w", err)

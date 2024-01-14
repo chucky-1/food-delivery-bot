@@ -152,7 +152,7 @@ func (b *Bot) Consume(ctx context.Context) {
 						continue
 					}
 
-					b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2)
+					b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2, "")
 					continue
 				}
 			} else {
@@ -334,7 +334,7 @@ func (b *Bot) Consume(ctx context.Context) {
 							logrus.Errorf("JoinToOrganization: send: %s", err.Error())
 							continue
 						}
-						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2)
+						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2, "")
 						logrus.Errorf("joinToOrganization: %s", err.Error())
 						continue
 					}
@@ -500,7 +500,7 @@ func (b *Bot) joinToOrganization(ctx context.Context, userTelegramID, chatID int
 		if err != nil {
 			return fmt.Errorf("send: %w", err)
 		}
-		b.msgStore.WaitMessage(userTelegramID, storage.JoinToOrganization, messageID+2)
+		b.msgStore.WaitMessage(userTelegramID, storage.JoinToOrganization, messageID+2, "")
 		return nil
 	}
 
