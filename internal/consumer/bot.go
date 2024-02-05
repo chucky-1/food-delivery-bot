@@ -38,9 +38,11 @@ var (
 		"Если у вас есть какие-либо вопросы или пожелания, не стесняйтесь обращаться к нам. Мы всегда готовы сделать ваш обед особенным.\n\n" +
 		"Приятного аппетита! 🍽😊\n\n" +
 		"/register"
+	startRegister        = "Ведите ваше имя"
+	inputLastName        = "Введите фамилию"
+	inputMiddleName      = "Введите отчество"
 	successfulRegistered = "🎉 Поздравляем вас с успешной регистрацией! 🎉\n\n" +
-		"Мы будем использовать ваш username, first_name и last_name из telegram для синхронизации с вашей бухгалтерией\n\n" +
-		"Для вступления в организацию нажмти /join"
+		"Для вступления в организацию нажмите /join"
 	joinToOrganization           = "Введите ID организации \n\n"
 	successfulJoinOrganization   = "🎉 Поздравляем! Вы успешно вступили в организацию! 🎉"
 	successfulClearOrder         = "😊 Мы удалили всё из вашего заказа"
@@ -113,11 +115,9 @@ func (b *Bot) Consume(ctx context.Context) {
 				case register:
 					newCtx, cancel := context.WithTimeout(ctx, time.Minute)
 					err := b.auth.Register(newCtx, &model.TelegramUser{
-						ID:        update.SentFrom().ID,
-						ChatID:    update.Message.Chat.ID,
-						FirstName: update.SentFrom().FirstName,
-						LastName:  update.SentFrom().LastName,
-						Username:  update.SentFrom().UserName,
+						ID:       update.SentFrom().ID,
+						ChatID:   update.Message.Chat.ID,
+						Username: update.SentFrom().UserName,
 					})
 					if err != nil {
 						logrus.Errorf("registerCommand: %s", err.Error())
@@ -125,13 +125,16 @@ func (b *Bot) Consume(ctx context.Context) {
 						continue
 					}
 					cancel()
+
 					logrus.Debugf("user registered: %s %d", update.SentFrom().UserName, update.SentFrom().ID)
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, successfulRegistered)
+
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, startRegister)
 					_, err = b.bot.Send(msg)
 					if err != nil {
 						logrus.Error("register send: %s", err.Error())
 						continue
 					}
+					b.msgStore.WaitMessage(update.SentFrom().ID, storage.AddFirstName, update.Message.MessageID+2, "")
 					continue
 				case menu:
 					err := b.sendMenu(ctx, update.SentFrom().ID, update.Message.Chat.ID)
@@ -328,11 +331,60 @@ func (b *Bot) Consume(ctx context.Context) {
 						msg := tgbotapi.NewMessage(update.Message.Chat.ID, errJoinToOrganization)
 						_, errSend := b.bot.Send(msg)
 						if errSend != nil {
-							logrus.Errorf("JoinToOrganization: send: %s", err.Error())
+							logrus.Errorf("joinToOrganization: send: %s", err.Error())
 							continue
 						}
 						b.msgStore.WaitMessage(update.SentFrom().ID, storage.JoinToOrganization, update.Message.MessageID+2, "")
 						logrus.Errorf("joinToOrganization: %s", err.Error())
+						continue
+					}
+					continue
+				case storage.AddFirstName:
+					err = b.auth.UpdateFirstName(ctx, int(update.SentFrom().ID), update.Message.Text)
+					if err != nil {
+						logrus.Errorf("addFirstName: user_telegram_id: %d, first_name: %s, err: %s",
+							int(update.SentFrom().ID), update.Message.Text, err.Error())
+						continue
+					}
+
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, inputLastName)
+					_, errSend := b.bot.Send(msg)
+					if errSend != nil {
+						logrus.Errorf("addFirstName: send: %s", err.Error())
+						continue
+					}
+
+					b.msgStore.WaitMessage(update.SentFrom().ID, storage.AddLastName, update.Message.MessageID+2, "")
+
+				case storage.AddLastName:
+					err = b.auth.UpdateLastName(ctx, int(update.SentFrom().ID), update.Message.Text)
+					if err != nil {
+						logrus.Errorf("addLastName: user_telegram_id: %d, last_name: %s, err: %s",
+							int(update.SentFrom().ID), update.Message.Text, err.Error())
+						continue
+					}
+
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, inputMiddleName)
+					_, errSend := b.bot.Send(msg)
+					if errSend != nil {
+						logrus.Errorf("addLastName: send: %s", err.Error())
+						continue
+					}
+
+					b.msgStore.WaitMessage(update.SentFrom().ID, storage.AddMiddleName, update.Message.MessageID+2, "")
+
+				case storage.AddMiddleName:
+					err = b.auth.UpdateMiddleName(ctx, int(update.SentFrom().ID), update.Message.Text)
+					if err != nil {
+						logrus.Errorf("updateMiddleName: user_telegram_id: %d, last_name: %s, err: %s",
+							int(update.SentFrom().ID), update.Message.Text, err.Error())
+						continue
+					}
+
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, successfulRegistered)
+					_, err = b.bot.Send(msg)
+					if err != nil {
+						logrus.Error("register send: %s", err.Error())
 						continue
 					}
 					continue
