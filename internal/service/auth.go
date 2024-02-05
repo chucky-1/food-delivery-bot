@@ -11,6 +11,9 @@ import (
 
 type Auth interface {
 	Register(ctx context.Context, u *model.TelegramUser) error
+	UpdateFirstName(ctx context.Context, telegramUserID int, firstName string) error
+	UpdateLastName(ctx context.Context, telegramUserID int, lastName string) error
+	UpdateMiddleName(ctx context.Context, telegramUserID int, middleName string) error
 }
 
 type auth struct {
@@ -47,6 +50,30 @@ func (a *auth) Register(ctx context.Context, telegramUser *model.TelegramUser) e
 	})
 	if err != nil {
 		return fmt.Errorf("register: %w", err)
+	}
+	return nil
+}
+
+func (a *auth) UpdateFirstName(ctx context.Context, telegramUserID int, firstName string) error {
+	err := a.userRepo.UpdateFirstName(ctx, telegramUserID, firstName)
+	if err != nil {
+		return fmt.Errorf("updateFirstName: %w", err)
+	}
+	return nil
+}
+
+func (a *auth) UpdateLastName(ctx context.Context, telegramUserID int, lastName string) error {
+	err := a.userRepo.UpdateLastName(ctx, telegramUserID, lastName)
+	if err != nil {
+		return fmt.Errorf("updateLastName: %w", err)
+	}
+	return nil
+}
+
+func (a *auth) UpdateMiddleName(ctx context.Context, telegramUserID int, middleName string) error {
+	err := a.userRepo.UpdateMiddleName(ctx, telegramUserID, middleName)
+	if err != nil {
+		return fmt.Errorf("updateMiddleName: %w", err)
 	}
 	return nil
 }

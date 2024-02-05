@@ -24,8 +24,8 @@ func NewTelegram(tr *transactor) *telegram {
 }
 
 func (t *telegram) AddUser(ctx context.Context, u *model.TelegramUser) error {
-	query := `INSERT INTO telegram.users (id, chat_id, first_name, last_name, username) VALUES ($1,$2,$3,$4,$5)`
-	_, err := t.tr.extractTx(ctx).Exec(ctx, query, u.ID, u.ChatID, u.FirstName, u.LastName, u.Username)
+	query := `INSERT INTO telegram.users (id, chat_id, username) VALUES ($1,$2,$3)`
+	_, err := t.tr.extractTx(ctx).Exec(ctx, query, u.ID, u.ChatID, u.Username)
 	if err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
@@ -33,7 +33,7 @@ func (t *telegram) AddUser(ctx context.Context, u *model.TelegramUser) error {
 }
 
 func (t *telegram) GetUsersByLunchTimes(ctx context.Context, lunchTimes []string) (map[time.Duration][]*model.TelegramUser, error) {
-	query := `SELECT t.id AS telegram_user_id, t.chat_id, t.first_name, io.lunch_time
+	query := `SELECT t.id AS telegram_user_id, t.chat_id, io.lunch_time
 	FROM telegram.users AS t
 	JOIN internal.users AS iu ON t.id = iu.telegram_id
 	JOIN internal.organizations AS io ON iu.organization_id = io.id
@@ -56,7 +56,7 @@ func (t *telegram) GetUsersByLunchTimes(ctx context.Context, lunchTimes []string
 			telegramUser model.TelegramUser
 			lunchTime    time.Duration
 		)
-		err = rows.Scan(&telegramUser.ID, &telegramUser.ChatID, &telegramUser.FirstName, &lunchTime)
+		err = rows.Scan(&telegramUser.ID, &telegramUser.ChatID, &lunchTime)
 		if err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}

@@ -6,4 +6,7 @@ type User struct {
 	ID             uuid.UUID
 	TelegramID     int64
 	OrganizationID uuid.UUID
+	FirstName      string
+	LastName       string
+	MiddleName     string
 }
